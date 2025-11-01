@@ -143,13 +143,30 @@ async function handleSetup(event, elements) {
     const confirmPassword = elements.confirmMasterPassword.value;
     
     if (newPassword !== confirmPassword) {
-        elements.setupError.textContent = 'Passwords do not match!';
+        elements.setupError.textContent = "Passwords don't match";
         elements.setupError.classList.remove('hidden');
         return;
     }
     
-    if (newPassword.length < 8) {
-        elements.setupError.textContent = 'Master password must be at least 8 characters long.';
+    const passwordChecks = {
+        length: newPassword.length >= 12,
+        uppercase: /[A-Z]/.test(newPassword),
+        lowercase: /[a-z]/.test(newPassword),
+        numbers: /[0-9]/.test(newPassword),
+        special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]/.test(newPassword),
+        noCommonPatterns: !/^(?:123456|password|qwerty|abc123)/i.test(newPassword)
+    };
+    
+    const failedChecks = [];
+    if (!passwordChecks.length) failedChecks.push("at least 12 characters");
+    if (!passwordChecks.uppercase) failedChecks.push("an uppercase letter");
+    if (!passwordChecks.lowercase) failedChecks.push("a lowercase letter");
+    if (!passwordChecks.numbers) failedChecks.push("a number");
+    if (!passwordChecks.special) failedChecks.push("a special character");
+    if (!passwordChecks.noCommonPatterns) failedChecks.push("no common patterns");
+    
+    if (failedChecks.length > 0) {
+        elements.setupError.textContent = `Password must contain ${failedChecks.join(", ")}`;
         elements.setupError.classList.remove('hidden');
         return;
     }
@@ -980,29 +997,20 @@ function shuffleString(str) {
     return arr.join('');
 }
 
-/**
- * ======================================================================
- * ENHANCED SECURITY FEATURES
- * Additional security measures for protecting sensitive data
- * ======================================================================
- */
 
-// Auto-clear clipboard after copying passwords
 let clipboardTimeout = null;
 
 function copyToClipboardWithAutoClear(text, label, clearAfterMs = 30000) {
     navigator.clipboard.writeText(text).then(() => {
         showToast(`${label} copied! Will be cleared in 30 seconds`);
         
-        // Clear previous timeout if exists
         if (clipboardTimeout) {
             clearTimeout(clipboardTimeout);
         }
         
-        // Set new timeout to clear clipboard
         clipboardTimeout = setTimeout(() => {
             navigator.clipboard.writeText('').catch(() => {
-                // Ignore errors if clipboard is not accessible
+                console.error('Failed to clear clipboard');
             });
         }, clearAfterMs);
     }).catch(err => {
@@ -1011,7 +1019,6 @@ function copyToClipboardWithAutoClear(text, label, clearAfterMs = 30000) {
     });
 }
 
-// Password strength indicator
 function calculatePasswordStrength(password) {
     let strength = 0;
     
@@ -1029,7 +1036,6 @@ function calculatePasswordStrength(password) {
     return { level: 'very-strong', color: 'blue', text: 'Very Strong' };
 }
 
-// Inactivity detection with warning
 let inactivityWarningShown = false;
 
 function enhancedSessionMonitoring(elements) {
@@ -1045,7 +1051,6 @@ function enhancedSessionMonitoring(elements) {
             return;
         }
         
-        // Show warning if approaching timeout
         const lastActivity = parseInt(localStorage.getItem(STORAGE_KEYS.LAST_ACTIVITY) || '0');
         const timeSinceActivity = Date.now() - lastActivity;
         
@@ -1054,14 +1059,12 @@ function enhancedSessionMonitoring(elements) {
             showToast('Session will expire in 1 minute due to inactivity');
         }
         
-        // Reset warning flag if user becomes active again
         if (timeSinceActivity < warningTime) {
             inactivityWarningShown = false;
         }
     }, checkInterval);
 }
 
-// Export vault data (encrypted)
 async function exportVaultData() {
     try {
         const passwords = await loadPasswords();
@@ -1090,7 +1093,6 @@ async function exportVaultData() {
     }
 }
 
-// Import vault data
 async function importVaultData(fileInput) {
     try {
         const file = fileInput.files[0];
